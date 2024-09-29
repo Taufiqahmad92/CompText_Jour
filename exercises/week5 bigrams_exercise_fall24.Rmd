@@ -10,8 +10,11 @@ output: html_document
 
 ```{r}
 #load tidyverse, tidytext, rio and quanteda libraries
-
+library(tidyverse)
+library(rio)
+library(quanteda)
 ```
+
 
 ```{r}
 #Import dataframe 
@@ -24,28 +27,52 @@ lynch <- read_csv("../data/articles_oct_19.csv")
 # Create a new dataframe that filters articles for 1900 to 1910
 
 ```{r}
-
-
+filtered_articles <- lynch %>%
+    filter(year >= 1900 & year <= 1910)
+print(filtered_articles)
 ```
 
 
 # Count the number of distinct articles in 1900 dataframe
-```{r}
 
+```{r}
+dataframe_1900 <- filtered_articles %>%
+  distinct(filename, .keep_all = TRUE) %>% 
+  count(year)
+print(dataframe_1900)
 ```
 
 # Count the number of newspaper_states in the 1900 corpus
+
 ```{r}
-
-
-
+newspaper_state<- filtered_articles %>%
+   distinct(filename, .keep_all = TRUE) %>% 
+  count(newspaper_state) %>%
+  arrange(desc(n))
+print(newspaper_state)
 ```
+
+
+```{r}
+install.packages("tidytext")
+```
+
+```{r}
+library(tidytext)
+```
+
 
 # Tokenize the 1900 lynching stories
 
 ```{r}
+token_lynch <- str_replace_all(filtered_articles$sentence, "- ", "")
+lynch_stories <- tibble(token_lynch,)
 
 
+lynch_storie_tokenized <- lynch_stories %>%
+  unnest_tokens(word,token_lynch)
+
+# Unnest includes lower, punct removal
 ```
 
 
@@ -71,8 +98,7 @@ head(test)
 # Strip out stop words
 
 ```{r}
-
-stories_tokenized <- stories_tokenized %>%
+stories_tokenized <- lynch_storie_tokenized %>%
   anti_join(stop_words, by = c("word" = "word")) %>%
   filter(word != "temp_file") %>%
   filter(word != "stories_corpus") %>%
@@ -80,30 +106,47 @@ stories_tokenized <- stories_tokenized %>%
 
 # Word Count
 
-story_word_ct <- stories_tokenized %>%
+story_word_ct <- lynch_storie_tokenized %>%
   count(word, sort=TRUE)
 
 head(story_word_ct)
+```
 
+```{r}
+ct_distinct1 <- stories_tokenized %>%
+  count(word, sort=TRUE)
 
+head(ct_distinct1)
 ```
 
 # Bigrams
 ## We are now creating two word phrases but before the stop words are taken out
 
 ```{r}
-stories_bigrams <- stories_df %>%
-  unnest_tokens(bigram, stories, token="ngrams", n=2)
+stories_bigrams <- lynch_stories %>%
+  unnest_tokens(bigram, token_lynch, token="ngrams", n=2)
 
 stories_bigrams_separated <- stories_bigrams %>%
   separate(bigram, c("word1", "word2"), sep = " ")
+
+print(stories_bigrams_separated)
 ```
 
-# Create a new dataframe with counts of the bigrams
 ```{r}
-
+library(dplyr)
 ```
 
+# Create a new dataframe with counts of the bigrams{r}
+
+```{r}
+bigramscount <- stories_bigrams %>%
+  unnest_tokens(bigram, filename, token = "ngrams", n = 2)  
+bigram_counts <- bigrams %>%
+  count(bigram, sort = TRUE)
+bigram_counts_df <- bigram_counts %>%
+  as.data.frame()
+head(bigram_counts_df)
+```
 ## Now filter the counts 
 ```{r}
 
@@ -124,15 +167,68 @@ Hint: use mutate
 
 ```{r}
 
+decade_1900_column <- filtered_articles %>%
+  mutate(decade = "1900")
 
+head(filtered_articles)
 ```
-
 
 # YOUR TURN
 
-Create one dataframe with black press articles
-Create a second dataframe without black press articles
-Produce the top 20 bigrams for the black press and non-black press coverage
-Compare and discuss!
+#Create one dataframe with black press articles
 
+```{r}
+blackpress_articles <- lynch%>%
+  filter(!is.na(black_press))%>%
+  filter(!is.na(newspaper_name))%>%
+  count(newspaper_name)%>%
+arrange(desc(n))
 
+print(blackpress_articles)
+```
+
+#Create a second dataframe without black press articles
+
+```{r}
+non_blackpress_articles <- lynch %>%
+   filter(is.na(black_press)) %>%      # Newspaper names are not NA
+   filter(!is.na(newspaper_name)) %>%  # Filter for NA values in black_press
+  count(newspaper_name) %>%               
+  arrange(desc(n))  
+print(non_blackpress_articles)
+```
+
+#Produce the top 20 bigrams for the black press and non-black press coverage 
+
+```{r}
+# Step 1: Black Press Articles for Bigrams
+blackpress_bigrams <- lynch %>%
+  filter(!is.na(black_press)) %>%
+  filter(!is.na(newspaper_name)) %>%
+  unnest_tokens(bigram, filename, token = "ngrams", n = 2) %>%
+  count(bigram, sort = TRUE) %>%
+  top_n(20, n) %>%
+  mutate(press_type = "Black Press")  # Add a label for Black Press
+
+# Step 2: Non-Black Press Articles for Bigrams
+non_blackpress_bigrams <- lynch %>%
+  filter(is.na(black_press)) %>%
+  filter(!is.na(newspaper_name)) %>%
+  unnest_tokens(bigram, filename, token = "ngrams", n = 2) %>%
+  count(bigram, sort = TRUE) %>%
+  top_n(20, n) %>%
+  mutate(press_type = "Non-Black Press")  # Add a label for Non-Black Press
+
+# Step 3: Combine the two datasets
+combined_bigrams <- bind_rows(blackpress_bigrams, non_blackpress_bigrams)
+
+# Step 4: Arrange by press type and frequency of bigrams
+combined_bigrams <- combined_bigrams %>%
+  arrange(desc(n), press_type)
+
+# Step 5: View the combined results in one table
+print(combined_bigrams)
+
+```
+#Compare and discuss!
+The code processes bigrams (two-word combinations) from two categories of newspaper articles: Black Press and Non-Black Press. In Step 1, it extracts bigrams from the Black Press articles by filtering relevant records, tokenizing them into bigrams, counting the frequency of each bigram, and selecting the top 20 most frequent ones. Step 2 applies the same process to Non-Black Press articles. In Step 3, the two datasets are combined into a single dataset, where the bigrams are labeled by their press type. Finally, in Step 4, the combined dataset is arranged by the frequency of the bigrams and categorized by press type.This comparison allows us to observe the most common bigrams in each press type and highlights differences in how language and topics are represented in Black Press versus Non-Black Press. 
