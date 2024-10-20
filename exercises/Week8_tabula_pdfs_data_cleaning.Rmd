@@ -52,6 +52,9 @@ We will use mutate to divide the total_received by total_sent
 voters_by_county <- voters_by_county |> 
   mutate(pct_received = round(total_received / total_sent*100, 1))
 
+voters_by_county ->
+  select(count_fields())
+
 #round = rounds the calculation to 1 decimal
 
 ```
@@ -95,9 +98,7 @@ Now, sort by the top five counties by return for each party
     select(county_name, pct_received, pct_dem, pct_gop, pct_ind) |> 
     arrange(desc(pct_ind)) |> 
     slice_head(n = 5)
-
-
-
+view(pct_dem)
 ```
 
 

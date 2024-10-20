@@ -1,0 +1,156 @@
+---
+title: 'Homework: Basic pipeline proficiency'
+author: "Taufiq"
+date: "2024-10-15"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(tidytext)
+library(janitor)
+library(rio)
+library(textdata)
+library(dplyr)
+library(tidytext)
+library(stringr)
+library(readr)
+library(ggplot2)
+```
+
+#1. Import the data
+
+```{r}
+ChinaFDI_LAT_tidy <- read_csv("https://raw.githubusercontent.com/wellsdata/CompText_Jour/main/data/ChinaFDI-LAT_tidy.csv")
+```
+
+
+#2. Use code to count the number of unique articles in the dataset
+```{r}
+library(dplyr)
+
+unique_articles_count <- ChinaFDI_LAT_tidy %>%
+ distinct(article_nmbr) %>%
+  count()
+
+
+# Print the number of unique articles
+print(unique_articles_count)
+
+```
+
+#3. Remove useless metadata such as "Los Angeles Times" and "ISSN". 
+
+```{r}
+# Defining the patterns to filter out
+
+patterns_to_remove <- c("Title", "Pages", "Publication date", "Publication subject","ISSN", "Language of publication: English", "Document URL", "Copyright", "Last updated", "Database", "STARTOFARTICLE", "ProQuest document ID","Classification", "https", "--", "People", "Publication info", "Illustration Caption","Identifier /keyword", "Twitter", "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
+
+# Filtering the rows where the 'text' column does NOT start with any of the specified patterns
+
+Remove_useless_metadata <- ChinaFDI_LAT_tidy %>%
+  filter(!grepl(paste0("^(", paste(patterns_to_remove, collapse="|"), ")"), text))
+
+# View the cleaned dataset
+print(Remove_useless_metadata)
+```
+
+
+
+#4. Tokenize the data, remove stop words, remove the phrase "los angeles," and create a dataframe of one word per row
+
+```{r}
+# Tokenize the data 
+ChinaFDI_tokenized <- Remove_useless_metadata %>%
+  unnest_tokens(word, text)
+
+# Remove stop words
+ChinaFDI_clean <- ChinaFDI_tokenized %>%
+  anti_join(stop_words, by = "word")
+
+# Remove the phrase "los angeles"
+ChinaFDI_clean <- ChinaFDI_clean %>%
+  filter(!str_detect(word, "los angeles"))  
+
+print(ChinaFDI_clean)
+```
+
+#5. Generate a list of the top 20 bigrams
+```{r}
+# To create bigrams 
+ChinaFDI_bigrams <- ChinaFDI_LAT_tidy %>%
+  unnest_tokens(bigram, text, token="ngrams", n=2)
+
+# Count the frequency of bigrams
+ChinaFDI_bigrams_count <- ChinaFDI_bigrams %>%
+  count(bigram, sort = TRUE)
+
+# Top 20 most frequent bigrams
+top_20_bigrams <- ChinaFDI_bigrams_count %>%
+  top_n(20)
+
+# View the top 20 bigrams
+print(top_20_bigrams)
+```
+
+
+#6. Create a ggplot chart showing the top 20 bigrams
+
+```{r}
+plot <- ggplot(top_20_bigrams, aes(x = reorder(bigram, n), y = n)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +  
+  labs(title = "Top 20 Bigrams",
+       x = "Bigrams",
+       y = "Frequency") +
+  theme_minimal()
+
+# Display the plot
+print(plot)
+```
+
+#7 Run a sentiment analysis using the Afinn lexicon
+
+```{r}
+install.packages("lexicon")
+install.packages("textdata")
+```
+
+```{r}
+# Load the AFINN lexicon
+afinn <- get_sentiments("afinn")
+
+# Sentiment analysis by joining the tokenized words with the AFINN lexicon
+sentiment_analysis <- ChinaFDI_tokenized %>%
+  inner_join(afinn, by = "word") %>%
+  group_by(id = row_number()) %>%  
+  summarize(sentiment = sum(value), .groups = "drop")
+
+# a column for sentiment type (Positive or Negative)
+sentiment_analysis <- sentiment_analysis %>%
+  mutate(sentiment_type = ifelse(sentiment >= 0, "Positive", "Negative"))
+
+# Visualize the sentiment scores
+ggplot(sentiment_analysis, aes(x = id, y = sentiment, fill = sentiment_type)) +
+  geom_col() +
+  scale_fill_manual(values = c("Positive" = "steelblue", "Negative" = "firebrick")) + 
+  labs(title = "Sentiment Analysis Using AFINN Lexicon",
+       x = "Document ID",
+       y = "Sentiment Score") +
+  theme_minimal()
+```
+
+#At the bottom of the R markdown document, write a 250 word memo describing your key findings. Describe any problems you encountered in this process.
+
+Throughout this exercise, I have gained significant insights, albeit with a few challenges that I would like to highlight. Initially, I attempted to import the file directly, but encountered difficulties when I reopened the assignment. To resolve this, I utilized the online link and accessed the dataset via a URL from GitHub, which proved effective.
+
+Counting the number of unique articles was relatively straightforward; however, I initially overlooked the importance of focusing on the "article_nmbr" column. Once I redirected my attention to this specific column, I successfully obtained the count.
+
+When it came to removing extraneous metadata such as "Los Angeles Times" and "ISSN," I first employed the code suggested in the assignment. Unfortunately, this did not yield the clean data I expected. I suspect this may have been due to my misunderstanding of the code's implementation. I would greatly appreciate it if this could be revisited in class for further clarification. Subsequently, I adopted a different approach, concentrating on defining the relevant patterns and filtering out rows in the 'text' column that did not start with any of the specified patterns. Although this method was time-consuming, I believe there may be more efficient ways to achieve the same outcome.
+
+Tokenizing the data and removing stop words was relatively easy; however, I learned that to identify the top 20 bigrams, I first needed to calculate the frequency of the bigrams. After counting all instances, I successfully extracted the top 20. The process of generating the ggplot chart followed the same pattern we practiced in a previous classes. I created a chart displaying bigrams on the Y-axis and their corresponding frequencies on the X-axis.
+
+A significant learning element in this assignment was the application of sentiment analysis. I encountered challenges while uploading the "Afinn lexicon" libraries, but I was able to seek assistance from ChatGPT to resolve the issue and run the code successfully. As I missed the relevant class, I relied on the recording link, which I viewed again. Despite my efforts, I continued to face challenges until I connected online with a few classmates who provided clarity on the process.
+
+
+
