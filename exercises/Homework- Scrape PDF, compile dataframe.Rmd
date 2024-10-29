@@ -1,0 +1,89 @@
+---
+title: 'Homework: Scrape PDF, compile dataframe'
+author: "Taufiq"
+date: "2024-10-22"
+output: html_document
+---
+
+```{r}
+#install.packages("pdftools")
+library(pdftools)
+library(tidyverse)
+```
+#Downloading and converting PDF to text 
+
+```{r}
+#removed split_file folder in a cleanup
+text <- pdf_text("~/Desktop/Code/CompText_Jour/exercises/AI_yao_taufiq .PDF")
+#pdf_text reads the text from a PDF file.
+writeLines(text, "~/Desktop/Code/CompText_Jour/exercises/AI_yao_taufiq.txt")
+#writeLines writes this text to a text file
+
+```
+
+#3) Extract the text using the pdftools package
+#4) Split the text so you have one article per file
+```{r}
+file_path <-"~/Desktop/Code/CompText_Jour/exercises/AI_yao_taufiq.txt"
+text_data <- readLines(file_path)
+
+# Step 2: Combine lines into one single string
+text_combined <- paste(text_data, collapse = "\n")
+
+# Step 3: Split the text by the "End of Document" phrase
+documents <- strsplit(text_combined, "End of Document")[[1]]
+
+# Step 4: Write each section to a new file
+output_dir <- "~/Desktop/Code/CompText_Jour/exercises/"
+for (i in seq_along(documents)) {
+  output_file <- file.path(output_dir, paste0("AI_yao_taufiq", i, ".txt"))
+  writeLines(documents[[i]], output_file)
+}
+
+cat("Files created:", length(documents), "\n")
+```
+
+#5) Construct a dataframe with an index of the articles a unique file name for each article
+
+```{r}
+yao_taufiq_index <- read_lines("~/Desktop/Code/CompText_Jour/exercises/AI_yao_taufiq.txt")
+# Extract lines 16 to 58
+extracted_lines <- yao_taufiq_index[01:17800]
+
+
+# Print the extracted lines to the console
+cat(extracted_lines, sep = "\n")
+
+extracted_lines <- extracted_lines |> 
+  as.data.frame() 
+
+
+extracted_lines <- extracted_lines |> 
+  mutate(extracted_lines = str_remove(extracted_lines, "\\| About LexisNexis \\| Privacy Policy \\| Terms & Conditions \\| Copyright © 2020 LexisNexis"))
+```
+
+
+#6) Pull the text articles together into a single dataframe, one row per sentence
+
+```{r}
+#Pull the text articles together into a single dataframe, one row per sentence
+#Construct the output file path for each article
+  output_file <- file.path(Yao_output, paste0("yao_extracted_", i, ".txt"))
+  
+#Write the content of each article to a new text file
+  writeLines(Yao_split[[i]], output_file)
+  
+#Split the content into sentences using stringr's sentence detection
+  sentences <- unlist(str_split(Yao_split[[i]], "(?<!\\w\\.)\\.\\s+|(?<!\\w\\.)\\!\\s+|(?<!\\w\\.)\\?\\s+"))
+  
+#Print the number of files created
+cat("Files created:", length(Yao_split), "\n")
+
+#Display the dataframe with articles
+print(articles_df)
+```
+```
+
+
+#7) BONUS NERD ZONE: Link the dataframe with the text to the index
+
