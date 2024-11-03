@@ -1,7 +1,0 @@
----
-title: 'Homework: Revenge of the Scrape PDF, compile dataframe_taufiq'
-author: "Taufiq"
-date: "2024-11-02"
-output: html_document
----
-

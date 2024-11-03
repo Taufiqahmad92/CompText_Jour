@@ -1,0 +1,294 @@
+---
+title: "Bigrams Exercise Sept 24"
+author: "Rob Wells"
+date: '2024-09-20'
+output: html_document
+---
+
+# Jour 389/689 Fall 2024:
+
+
+```{r}
+#load tidyverse, tidytext, rio and quanteda libraries
+library(tidyverse)
+library(rio)
+library(quanteda)
+```
+
+
+```{r}
+#Import dataframe 
+
+lynch <- read_csv("../data/articles_oct_19.csv")
+
+```
+
+
+# Create a new dataframe that filters articles for 1900 to 1910
+
+```{r}
+filtered_articles <- lynch %>%
+    filter(year >= 1900 & year <= 1910)
+print(filtered_articles)
+```
+
+
+# Count the number of distinct articles in 1900 dataframe
+
+```{r}
+dataframe_1900 <- filtered_articles %>%
+  distinct(filename, .keep_all = TRUE) %>% 
+  count(year)
+print(dataframe_1900)
+
+#rsw comment - I wanted a total count of distinct articles. Yours gave a count by year
+lynch1910 %>% 
+  select(filename) %>% 
+ distinct(filename, .keep_all = TRUE) %>% 
+  count(filename) %>% 
+  summarize(total =sum(n)) 
+#There are 1,732 distinct articles in the dataset for the 1900-1910 
+
+
+```
+
+# Count the number of newspaper_states in the 1900 corpus
+
+```{r}
+newspaper_state<- filtered_articles %>%
+   distinct(filename, .keep_all = TRUE) %>% 
+  count(newspaper_state) %>%
+  arrange(desc(n))
+print(newspaper_state)
+```
+
+
+```{r}
+install.packages("tidytext")
+```
+
+```{r}
+library(tidytext)
+```
+
+
+# Tokenize the 1900 lynching stories
+
+```{r}
+token_lynch <- str_replace_all(filtered_articles$sentence, "- ", "")
+lynch_stories <- tibble(token_lynch,)
+
+
+lynch_storie_tokenized <- lynch_stories %>%
+  unnest_tokens(word,token_lynch)
+
+# Unnest includes lower, punct removal
+```
+
+
+#Remove stopwords
+The tidytext package includes the stop_words dataset.It contains, as of this writing, 1,149 words that data scientists and linguistic nerds felt could be removed from sentences because they don't add meaning. Filtering out these words can help focus on the more meaningful content, making it easier to uncover trends, themes, and key information in large amounts of text. Obviously, we have different priorities and we may or may not want to use stop_words or we have want to provide a customized list of stop words.
+
+The stop_words list is derived from three separate lists, or lexicons: SMART (571 words), onix (404 words), and snowball (174 words)
+
+The ONIX lexicon comes from the Open Information Exchange and is often used in text mining and natural language processing. 
+
+The Snowball lexicon is part of a broader project that has algorithms that simplify words in different languages by reducing them to their root form. It's best known for the Porter stemming algorithm, which, for example, changes "running" to "run." 
+
+Lastly, the SMART lexicon is a set of common words, like "and," "the," and "is," and it comes from the SMART Information Retrieval System, created at Cornell University in the 1960s.
+
+```{r}
+data(stop_words)
+
+test <- stop_words %>% 
+  as.data.frame()
+
+head(test)
+```
+# Strip out stop words
+
+```{r}
+stories_tokenized <- lynch_storie_tokenized %>%
+  anti_join(stop_words, by = c("word" = "word")) %>%
+  filter(word != "temp_file") %>%
+  filter(word != "stories_corpus") %>%
+  filter(!grepl('[0-9]', word))
+
+# Word Count
+
+story_word_ct <- lynch_storie_tokenized %>%
+  count(word, sort=TRUE)
+
+head(story_word_ct)
+```
+
+```{r}
+ct_distinct1 <- stories_tokenized %>%
+  count(word, sort=TRUE)
+
+head(ct_distinct1)
+```
+
+# Bigrams
+## We are now creating two word phrases but before the stop words are taken out
+
+```{r}
+stories_bigrams <- lynch_stories %>%
+  unnest_tokens(bigram, token_lynch, token="ngrams", n=2)
+
+stories_bigrams_separated <- stories_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+print(stories_bigrams_separated)
+```
+
+```{r}
+#rsw comment - library(dplyr) YOU DON'T NEED THIS. you loaded it already with tidyverse
+library(dplyr)
+```
+
+# Create a new dataframe with counts of the bigrams{r}
+
+```{r}
+#rsw comment: error in this code. it fails when I run it.
+bigramscount <- stories_bigrams %>%
+  unnest_tokens(bigram, filename, token = "ngrams", n = 2)  
+bigram_counts <- bigrams %>%
+  count(bigram, sort = TRUE)
+bigram_counts_df <- bigram_counts %>%
+  as.data.frame()
+head(bigram_counts_df)
+
+#rsw comment: see how this works instead
+stories_bigrams_filtered <- stories_bigrams_separated %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word)
+
+stories_bigram_cts2 <- stories_bigrams_filtered %>%
+  count(word1, word2, sort = TRUE) %>% 
+  filter(!is.na(word1))
+
+stories_bigram_cts2
+
+
+```
+## Now filter the counts 
+```{r}
+
+stories_bigrams_filtered <- stories_bigrams_separated %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word)
+
+stories_bigram_cts2 <- stories_bigrams_filtered %>%
+  count(word1, word2, sort = TRUE) %>% 
+  filter(!is.na(word1))
+
+stories_bigram_cts2
+```
+
+# Add a "1900" decade column
+
+Hint: use mutate
+
+```{r}
+
+decade_1900_column <- filtered_articles %>%
+  mutate(decade = "1900")
+
+head(filtered_articles)
+```
+
+# YOUR TURN
+
+#Create one dataframe with black press articles
+
+```{r}
+blackpress_articles <- lynch%>%
+  filter(!is.na(black_press))%>%
+  filter(!is.na(newspaper_name))%>%
+  count(newspaper_name)%>%
+arrange(desc(n))
+
+print(blackpress_articles)
+
+#rsw comment: an easier way:
+bp <- lynch %>% 
+  filter(black_press=="Y")
+
+```
+
+#Create a second dataframe without black press articles
+
+```{r}
+non_blackpress_articles <- lynch %>%
+   filter(is.na(black_press)) %>%      # Newspaper names are not NA
+   filter(!is.na(newspaper_name)) %>%  # Filter for NA values in black_press
+  count(newspaper_name) %>%               
+  arrange(desc(n))  
+print(non_blackpress_articles)
+
+#rsw comment: easier way
+wp <- lynch %>% 
+  filter(is.na(black_press))
+```
+
+#Produce the top 20 bigrams for the black press and non-black press coverage 
+
+```{r}
+# Step 1: Black Press Articles for Bigrams
+blackpress_bigrams <- lynch %>%
+  filter(!is.na(black_press)) %>%
+  filter(!is.na(newspaper_name)) %>%
+  unnest_tokens(bigram, filename, token = "ngrams", n = 2) %>%
+  count(bigram, sort = TRUE) %>%
+  top_n(20, n) %>%
+  mutate(press_type = "Black Press")  # Add a label for Black Press
+
+# Step 2: Non-Black Press Articles for Bigrams
+non_blackpress_bigrams <- lynch %>%
+  filter(is.na(black_press)) %>%
+  filter(!is.na(newspaper_name)) %>%
+  unnest_tokens(bigram, filename, token = "ngrams", n = 2) %>%
+  count(bigram, sort = TRUE) %>%
+  top_n(20, n) %>%
+  mutate(press_type = "Non-Black Press")  # Add a label for Non-Black Press
+
+# Step 3: Combine the two datasets
+combined_bigrams <- bind_rows(blackpress_bigrams, non_blackpress_bigrams)
+
+# Step 4: Arrange by press type and frequency of bigrams
+combined_bigrams <- combined_bigrams %>%
+  arrange(desc(n), press_type)
+
+# Step 5: View the combined results in one table
+print(combined_bigrams)
+
+#RSW comment - this failed to produce bigrams of the sentences. you produced a list of file names. looks like you missed a crucial step:
+wp <- lynch %>% 
+  filter(is.na(black_press))
+stories <- str_replace_all(wp$sentence, "- ", "")
+stories_df <- tibble(stories,)
+
+# unnest includes lower, punct removal
+
+stories_tokenized <- stories_df %>%
+  unnest_tokens(word,stories)
+
+wp_stories_bigrams <- stories_df %>%
+  unnest_tokens(bigram, stories, token="ngrams", n=2)
+
+wp_stories_bigrams_separated <- wp_stories_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>% 
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word) %>% 
+  count(word1, word2, sort = TRUE) %>% 
+  filter(!is.na(word1))
+
+wp_stories_bigrams_separated
+
+#see my method on this answer key. Thanks
+https://github.com/wellsdata/CompText_Jour/blob/main/exercises/week5%20KEY%20bigrams_exercise_fall24.Rmd
+
+```
+#Compare and discuss!
+The code processes bigrams (two-word combinations) from two categories of newspaper articles: Black Press and Non-Black Press. In Step 1, it extracts bigrams from the Black Press articles by filtering relevant records, tokenizing them into bigrams, counting the frequency of each bigram, and selecting the top 20 most frequent ones. Step 2 applies the same process to Non-Black Press articles. In Step 3, the two datasets are combined into a single dataset, where the bigrams are labeled by their press type. Finally, in Step 4, the combined dataset is arranged by the frequency of the bigrams and categorized by press type.This comparison allows us to observe the most common bigrams in each press type and highlights differences in how language and topics are represented in Black Press versus Non-Black Press. 
