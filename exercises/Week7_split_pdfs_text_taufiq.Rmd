@@ -32,7 +32,6 @@ In this case, NexisUni makes life easy for us. At the end of each document, ther
 #For Mac: In Finder, Cntl + click on the filename, NOW hold down Alt/Option, and an item to copy file path will appear as Copy "Filename" as Pathname 
 #https://stackoverflow.com/questions/52695546/how-to-copy-path-of-a-file-in-mac-os
 
-
 file_path <- "../exercises/assets/extracted_text/kemi_text.txt"
 text_data <- readLines(file_path)
 
