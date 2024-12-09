@@ -1,10 +1,6 @@
 ---
 title: "Test web page"
-<<<<<<< HEAD
-author: "Taufiq Ahmad"
-=======
 author: "Rob Wells"
->>>>>>> 2962cbab6b4d1508554e5c832c86511c86acf9b7
 date: "2024-11-12"
 output: html_document
 ---
